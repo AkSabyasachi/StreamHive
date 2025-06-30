@@ -40,6 +40,7 @@ const uploadOnCloudinary = async (localFilePath) => {
      //*removes the locally saved files as upload failed
 
      //* 🔥(((Fixed a bug where if the file upload fails, the local file was not being deleted))))🔥 (mu khali fs.unlinksync lekhuthili without if condition check ta jebe "undefined" asuthila postman peda heijauthila)
+     //fs.existsSync(localFilePath) checks if the file exists before trying to delete it
     if (localFilePath && fs.existsSync(localFilePath)) 
     {
       fs.unlinkSync(localFilePath);

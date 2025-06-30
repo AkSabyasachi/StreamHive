@@ -441,8 +441,11 @@ const updateCoverImage = asyncHandler(async (req, res) => {
 });
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
-  /**
-   *
+  /*
+   * 1. Get username from request params
+   * 2. Find user by username
+   * 3. Aggregate subscribers and subscriptions
+   * 4. Add subscribersCount, subscribedToCount, and isSubscribed fields
    */
 
   // 1. Get username from request params
@@ -522,6 +525,58 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 
 });
 
+const getWatchHistory = asyncHandler(async(req,res) => {
+  /**
+   * 
+   */
+
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id)
+      }
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localfield: "watchHistory",
+        foreignfield: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: { 
+              from: "users",
+              localfield: "owner",
+              foreignfield: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    fullname: 1,
+                    username: 1,
+                    avatar: 1
+                  }
+                }
+              ]
+            }
+          },
+          {
+            $addFields: {
+              $first: "$owner"
+            }
+            
+          }
+        ]
+      }
+    }
+  ])
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user[0].watchHistory, "Watch history fetched successfully"));
+    
+})
+
 export {
   registerUser,
   loginUser,
@@ -532,5 +587,6 @@ export {
   updateUser,
   updateAvatar,
   updateCoverImage,
-  getUserChannelProfile,
+  getUserChannelProfile, // Subscriber count and subscription count
+  getWatchHistory
 };
