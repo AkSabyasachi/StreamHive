@@ -1,0 +1,254 @@
+import { asyncHandler } from "../utils/asyncHandler";
+import { Video } from "../models/video.model";
+import { ApiResponse } from "../utils/apiResponse";
+import { ApiError } from "../utils/apiError";
+import mongoose from "mongoose";
+import { uploadOnCloudinary } from "../utils/cloudinary";
+
+const getAllVideos = asyncHandler(async (req, res) => {
+  /*
+    * GET ALL VIDEOS WORKFLOW
+    
+    * 1. Get all published video with destructuring 
+    * 2. Convert the strings to numbers like page,limit 
+    * 3. Build aggregation pipeline
+    * 4. Return the response
+    */
+
+  const {
+    page = 1,
+    limit = 10,
+    query = "",
+    sortBy = "createdAt",
+    sortType = "desc",
+    userId,
+  } = req.query;
+
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
+
+  if (isNaN(pageNum) || isNaN(limitNum) || pageNum < 1 || limitNum < 1) {
+    throw new ApiError(400, "Page and Limit must be a valid number");
+  }
+
+  const allowedSortFields = ["createdAt", "title", "views", "likes"];
+  if (!allowedSortFields.includes(sortBy)) {
+    throw new ApiError(400, "Invalid sortBy field");
+  }
+
+  //* Base match -
+  const matchStage = {
+    isPublished: true,
+  };
+
+  //* Filtering based on userId ; userId is normally stored in string format but in MongoDB it is soted as ObjectId so writing new mongoose.Types.... converts the userId to proper ObjectId providing userId based filtering
+  if (userId) {
+    matchStage.owner = new mongoose.Types.ObjectId(userId);
+  }
+
+  //* text search by title/description (got from query)
+  if (query?.trim()) {
+    matchStage.$or = [
+      { title: { $regex: query, $options: "i" } }, //regex: matches substrings like "%something%"
+      { description: { $regex: query, $options: "i" } }, //options: "i" - for case-insensitive search
+    ];
+  }
+
+  const sortStage = {
+    [sortBy]: sortType === "asc" ? 1 : -1, //1 is ascending(old -> new) and -1 is descending
+  };
+
+  //* Aggregation Pipeline
+  const pipeline = [
+    //1
+    {
+      $match: matchStage,
+    },
+    /* Internally this happens
+    { 
+      $match: {
+        isPublished: true,
+        $or: [
+          { title: { $regex: "js", $options: "i" } },
+          { description: { $regex: "js", $options: "i" } }
+        ]
+      }
+    }*/
+    //2
+    {
+      $lookup: {
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
+        as: "owner",
+        pipeline: [
+          {
+            $project: {
+              fullname: 1,
+              username: 1,
+              avatar: 1,
+            },
+          },
+        ],
+      },
+    },
+    //3
+    {
+      $addFields: {
+        owner: { $first: "$owner" },
+      },
+    },
+    //4
+    {
+      $sort: sortStage,
+    },
+  ];
+
+  const options = {
+    page: pageNum,
+    limit: limitNum,
+    customLabels: {
+      docs: "videos",
+      totalDocs: "totalVideos",
+    },
+  };
+
+  const result = await Video.aggregatePaginate(pipeline, options);
+
+  if (result.totalVideos === 0) {
+    throw new ApiError(404, "No matching videos found");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        videos: result.videos,
+        totalVideos: result.totalVideos,
+        totalPages: result.totalPages,
+        currentPage: result.page,
+      },
+      "Videos Fetched Successfully"
+    )
+  );
+});
+
+const publishAVideo = asyncHandler(async(req,res) => {
+
+   //* Extract title and description from req.body
+   const {title,description} = req.body
+   if(!title || !description)
+   {
+      throw new ApiError(400,"Title and Description required")
+   }
+
+   //* Extract video and thumbnail from req.files
+   const videoFileLocalPath = req.files?.videoFile?.[0].path;
+   const thumbnailLocalPath = req.files?.thumbnail?.[0].path;
+   if(!videoFileLocalPath || !thumbnailLocalPath)
+   {
+      throw new ApiError(400,"Video and Thumbnail required")
+   }
+
+   //* Upload themm to cloudinary
+   const videoFile = await uploadOnCloudinary(videoFileLocalPath)
+   if(!videoFile)
+   {
+      throw new ApiError(400,"Video upload failed");
+   }
+
+   const thumbnail = await uploadOnCloudinary(thumbnailLocalPath)
+   if(!thumbnail)
+   {
+      throw new ApiError(400,"Thumbnail upload failed");
+   }
+
+   //* Create a new video in MongoDB
+   const video = await Video.create({
+      title,
+      description,
+      duration: videoFile.duration || 0,
+      owner: req.user._id,
+      videoFile: videoFile.url,
+      thumbnail: thumbnail.url,
+      isPublished: true
+   });
+
+   const videoCreated = await Video.findById(video._id).select("-updatedAt")
+
+   return res
+      .status(200)
+      .json(new ApiResponse(200, videoCreated, "Video Created successfully"));
+
+});
+
+const getVideoById = asyncHandler(async(req,res) => {
+   const { videoId } = req.params //req.params store video ID from url like (/videos/:videoId)
+
+   if(!mongoose.Types.ObjectId.isValid(videoId))
+   {
+      throw new ApiError(400,"Invalid video ID");
+   }
+
+   const videoPipeline = await Video.aggregate([
+      {
+         $match: {
+            _id: new mongoose.Types.ObjectId(videoId),
+            isPublished: true
+         }
+      },
+      { //JOIN operation from Video.owner to user._id
+         $lookup: {
+            from: "users",
+            localField: "owner",
+            foreignField: "_id",
+            as:"owner",
+            pipeline: [ //Specific user fields displayed
+               {
+                  $project: {
+                     fullname: 1,
+                     username: 1,
+                     avatar: 1,
+                  }
+               }
+            ]
+         }  
+      },
+      {
+         $addFields: {
+            owner: { $first: "$owner" },
+         }
+      }
+   ]);
+
+   if(!videoPipeline.length) //because aggregate always return an array
+   {
+      throw new ApiError(404,"Video not found.")
+   }
+
+   const video = await Video.findByIdAndUpdate(
+      videoId,
+      { $inc: {views: 1} },
+   )
+
+   return res  
+      .status(200)
+      .json(new ApiResponse(200,videoPipeline[0],"Video Fetched Successfully."))
+
+});
+
+const updateVideo = asyncHandler(async(req,res) => {
+
+});
+
+const deleteVideo = asyncHandler(async(req,res) => {
+
+});
+
+export { 
+   getAllVideos,
+   publishAVideo,
+   getVideoById,
+   updateVideo,
+   deleteVideo
+};
