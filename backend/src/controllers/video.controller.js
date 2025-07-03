@@ -143,8 +143,8 @@ const publishAVideo = asyncHandler(async(req,res) => {
    }
 
    //* Extract video and thumbnail from req.files
-   const videoFileLocalPath = req.files?.videoFile?.[0].path;
-   const thumbnailLocalPath = req.files?.thumbnail?.[0].path;
+   const videoFileLocalPath = req.files?.videoFile?.[0]?.path;
+   const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path;
    if(!videoFileLocalPath || !thumbnailLocalPath)
    {
       throw new ApiError(400,"Video and Thumbnail required")
@@ -239,16 +239,125 @@ const getVideoById = asyncHandler(async(req,res) => {
 
 const updateVideo = asyncHandler(async(req,res) => {
 
+   //Extract the videoId and validate the id
+   const {videoId} = req.params;
+   if(!mongoose.Types.ObjectId.isValid(videoId))
+   {
+      throw new ApiError(400,"Invalid video ID")
+   }
+   
+   // Find and verify video ownership
+   const video = await Video.findById(videoId);
+   if(!video)
+   {
+      throw new ApiError(404,"Video not found")
+   }
+   if(!video.owner.equals(req.user._id))
+   {
+      throw new ApiError(403,"Unauthorized access.")
+   }
+
+   //
+   const {title,description} = req.body
+   if(!title && !description)
+   {
+      throw new ApiError(400,"Ateast title or description required!")
+   }
+
+   //Update object
+   const updateData = {}
+   if(title) updateData.title = title?.trim();
+   if(description) updateData.description = description?.trim();
+
+   //Thumbnail update
+   const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path;
+   if(thumbnailLocalPath)
+   {
+      const thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
+      if(!thumbnail)
+      {
+         throw new ApiError(400,"Thumbnail upload failed")
+      }
+      updateData.thumbnail = thumbnail.url;
+   }
+
+   //DB update
+   const updatedVideo = await Video.findByIdAndUpdate(
+      videoId,
+      { $set: updateData },
+      { new: true, runValidators: true }
+   ).select("-updatedAt")
+
+   return res 
+      .status(200)
+      .json(new ApiResponse(200,updatedVideo,"Video updated successfully."))
+
 });
 
 const deleteVideo = asyncHandler(async(req,res) => {
 
+   const {videoId} = req.params;
+   if(!mongoose.Types.ObjectId.isValid(videoId))
+   {
+      throw new ApiError(400,"Invalid video ID");
+   }
+
+   //Find video
+   const video = await Video.findById(videoId)
+   if(!videoId)
+   {
+      throw new ApiError(400,"Video not found.")
+   }
+
+   //Check for authorization
+   if(!video.owner.equals(req.user._id))
+   {
+      throw new ApiError(403,"Unauthorized to delete.")
+   }
+
+   await Video.findByIdAndDelete(videoId)
+
+   return res
+      .status(200)
+      .json(new ApiResponse(200,"","Video deletd successfully."))
+
+
 });
+
+const isPublishedToggle = asyncHandler(async(req,res) => {
+   const { videoId } = req.params;
+   if(!videoId)
+   {
+      throw new ApiError(400,"invalid video ID.")
+   }
+
+   const video = await Video.findById(videoId)
+   if(!video)
+   {
+      throw new ApiError(404,"Video not found.")
+   }
+
+   //check for authorization
+   if(!video.owner.equals(req.user._id))
+   {
+      throw new ApiError(403,"You are unauthorized. You are not the owner.")
+   }
+
+   video.isPublished = !video.isPublished
+   await video.save()
+
+   return res
+      .status(200)
+      .json(new ApiResponse(200,{isPublished: video.isPublished} ,`Video is now {$video.isPublished ? "published" : "unpublished" `))
+   
+})
+
 
 export { 
    getAllVideos,
    publishAVideo,
    getVideoById,
    updateVideo,
-   deleteVideo
+   deleteVideo,
+   isPublishedToggle
 };
