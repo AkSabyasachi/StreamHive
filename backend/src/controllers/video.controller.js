@@ -41,6 +41,10 @@ const getAllVideos = asyncHandler(async (req, res) => {
     isPublished: true,
   };
 
+  if (userId && !mongoose.Types.ObjectId.isValid(userId)) {
+  throw new ApiError(400, "Invalid user ID");
+}
+
   //* Filtering based on userId ; userId is normally stored in string format but in MongoDB it is soted as ObjectId so writing new mongoose.Types.... converts the userId to proper ObjectId providing userId based filtering
   if (userId) {
     matchStage.owner = new mongoose.Types.ObjectId(userId);
