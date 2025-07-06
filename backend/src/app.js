@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import userRouter from "./routes/user.routes.js";
 import videoRouter from "./routes/video.routes.js";
 import commentRouter from "./routes/comment.routes.js";
+import likeRouter from "./routes/like.routes.js"
 
 
 const app = express(); // Creates the Express application instance
@@ -33,6 +34,7 @@ app.use(cookieParser()); // Parses cookies into req.cookies object
 app.use("/api/v1/users", userRouter); 
 app.use("/api/v1/videos", videoRouter);
 app.use("/api/v1/comments",commentRouter);
+app.use("/api/v1/likes",likeRouter);
 
 
 //* 404 handler
