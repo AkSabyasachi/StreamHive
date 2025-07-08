@@ -11,6 +11,11 @@ const subscriptionSchema = new Schema(
     {
       type: Schema.Types.ObjectId, // one to whom 'subscriber' is subscribing
       ref:"User",
+    },
+    subscriberCount:
+    {
+      type: Number,
+      default: 0
     }
   },{ timestamps : true }
 )
