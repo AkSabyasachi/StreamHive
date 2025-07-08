@@ -9,6 +9,7 @@ import videoRouter from "./routes/video.routes.js";
 import commentRouter from "./routes/comment.routes.js";
 import likeRouter from "./routes/like.routes.js";
 import communityRouter from "./routes/community.routes.js";
+import subscriptionRouter from "./routes/subscription.routes.js";
 
 
 const app = express(); // Creates the Express application instance
@@ -37,6 +38,7 @@ app.use("/api/v1/videos", videoRouter);
 app.use("/api/v1/comments",commentRouter);
 app.use("/api/v1/likes",likeRouter);
 app.use("/api/v1/community",communityRouter);
+app.use("/api/v1/subscription",subscriptionRouter);
 
 
 //* 404 handler
