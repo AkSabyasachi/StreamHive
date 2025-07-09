@@ -5,6 +5,7 @@ const playlistSchema = new Schema(
       name: {
          type: String,
          required: true,
+         trim: true
       },
       description: {
          type: String,
@@ -16,7 +17,7 @@ const playlistSchema = new Schema(
          }
       ],
       owner: {
-         type: Schema.Type.ObjectId,
+         type: Schema.Types.ObjectId,
          ref: "User"
       },
    },{ timestamps: true }
