@@ -6,6 +6,9 @@ const communitySchema = new Schema(
          type: String,
          required: true,
       },
+      media: {
+         type: String, //Cloudinary URL
+      },
       owner: {
          type: Schema.Types.ObjectId,
          ref: "User"
