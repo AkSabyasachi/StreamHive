@@ -11,6 +11,7 @@ import likeRouter from "./routes/like.routes.js";
 import communityRouter from "./routes/community.routes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import playlistRouter from "./routes/playlist.routes.js";
+import dashboardRouter from "./routes/dashboard.routes.js"
 
 
 const app = express(); // Creates the Express application instance
