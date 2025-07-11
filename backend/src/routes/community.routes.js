@@ -4,6 +4,8 @@ import { createCommunityPost, deleteCommunityPost, getAllCommunityPost, getCommu
 import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router()
+console.log("✅ community.routes.js loaded");
+
 
 router.use(verifyJWT)
 

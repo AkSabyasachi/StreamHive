@@ -3,6 +3,7 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { getLikedVideos, toggleCommentLike, toggleCommunityLike, toggleVideoLike } from "../controllers/like.controller.js";
 
 const router = Router()
+console.log("✅ like.routes.js loaded");
 
 router.use(verifyJWT)
 

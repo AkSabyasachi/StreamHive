@@ -11,7 +11,7 @@ import likeRouter from "./routes/like.routes.js";
 import communityRouter from "./routes/community.routes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import playlistRouter from "./routes/playlist.routes.js";
-import dashboardRouter from "./routes/dashboard.routes.js"
+import dashboardRouter from "./routes/dashboard.routes.js";
 
 
 const app = express(); // Creates the Express application instance
@@ -42,6 +42,7 @@ app.use("/api/v1/likes",likeRouter);
 app.use("/api/v1/community",communityRouter);
 app.use("/api/v1/subscription",subscriptionRouter);
 app.use("/api/v1/playlist",playlistRouter);
+app.use("/api/v1/dashboard",dashboardRouter);
 
 
 //* 404 handler
