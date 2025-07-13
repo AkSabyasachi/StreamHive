@@ -16,7 +16,7 @@ console.log("✅ video.routes.js loaded");
 
 // PUBLIC routes
 router.route("/").get(getAllVideos);
-router.get("/:videoId", getVideoById);
+router.get("/:videoId",verifyJWT, getVideoById);
 
 // PROTECTED routes
 router.use(verifyJWT); // All routes below this are protected

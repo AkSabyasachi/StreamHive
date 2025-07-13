@@ -135,52 +135,61 @@ const loginUser = asyncHandler(async (req, res) => {
   /*
   * USER LOGIN WORKFLOW
 
-  * 1. req body -> data
-  * 2. username or email validation
-  * 3. Check if user exists in the database
-  * 4. Check if password is correct
-  * 5. Generate access token and refresh token
-  * 6. Return user data with tokens(with cookies)
+  * 1. Extract credentials from request body
+  * 2. Validate presence of usernameOrEmail and password
+  * 3. Determine if input is an email or username
+  * 4. Find the user in the database accordingly
+  * 5. If user exists, verify the password using bcrypt method
+  * 6. Generate access and refresh tokens
+  * 7. Exclude sensitive fields and return user data with tokens as cookies
   */
 
-  //* 1. req body -> data
-  const { username, email, password } = req.body;
+  //* 1. Extract credentials from request body
+  const { usernameOrEmail, password } = req.body;
 
-  if ((!username && !email) || !password) {
+  //* 2. Validate presence of identifier and password
+  if (!usernameOrEmail || !password) {
     throw new ApiError(400, "Username or email and password are required");
   }
 
-  //* 2. username or email validation
-  const user = await User.findOne({
-    $or: [{ username }, { email }],
-  });
+  //* 3. Determine if the input is an email (contains "@")
+  const isEmail = usernameOrEmail.includes("@");
 
-  //* 3. Check if user exists in the database
+  //* 4. Find user by email or username based on input type
+  const user = await User.findOne(
+    isEmail
+      ? { email: usernameOrEmail }
+      : { username: usernameOrEmail }
+  );
+
+  //* 5. If user not found, throw 404 error
   if (!user) {
     throw new ApiError(404, "User does not exist");
   }
 
-  //* 4. Check if password is correct using bcrypt method written in user.model.js
+  //* 6. Verify the password using instance method on User model
   const isPasswordValid = await user.isPasswordCorrect(password);
   if (!isPasswordValid) {
     throw new ApiError(401, "Invalid credentials");
   }
 
-  //* 5. Generate access token and refresh token
+  //* 7. Generate JWT access and refresh tokens
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
     user._id
   );
-  // use .select() to exclude password and refreshToken from the response
+
+  //* 8. Exclude password and refreshToken fields from the response
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
 
-  //* 6. Return user data with tokens(with cookies)
+  //* 9. Set tokens in secure, HTTP-only cookies
   const options = {
-    httpOnly: true,
-    secure: true,
+    httpOnly: true, // Prevents client-side JavaScript from accessing cookies
+    secure: true,   // Ensures cookies are only sent over HTTPS
   };
 
+  //* 10. Send success response with user info and tokens
   return res
     .status(200)
     .cookie("accessToken", accessToken, options)
@@ -193,6 +202,7 @@ const loginUser = asyncHandler(async (req, res) => {
       )
     );
 });
+
 
 const logoutUser = asyncHandler(async (req, res) => {
   /*
