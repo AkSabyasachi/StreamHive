@@ -3,9 +3,13 @@ import './index.css'
 import App from './App.jsx'
 import { ThemeProvider } from './context/ThemeContext.jsx'
 import React from 'react'
+import { AuthProvider } from "./context/AuthContext";
+
 
 createRoot(document.getElementById('root')).render(
     <ThemeProvider>
-    <App />
+        <AuthProvider>
+            <App />
+        </AuthProvider>
     </ThemeProvider>
 )

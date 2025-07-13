@@ -1,31 +1,29 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import React, { useEffect, useState, useCallback } from "react";
+import axios from "../utils/axiosInstance";
 import PlaylistCard from "../components/common/PlaylistCard";
-import VideoSkeleton from "../components/common/videoSkeleton";
+import VideoSkeleton from "../components/common/videoSkeleton"; 
 
 const Playlists = () => {
   const [playlists, setPlaylists] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchPlaylists = async () => {
+  const fetchPlaylists = useCallback(async () => {
     try {
-      const { data } = await axios.get("/api/v1/playlist/user", {
-        withCredentials: true,
-      });
+      const { data } = await axios.get("/api/v1/playlist/user/my");
       setPlaylists(data?.data || []);
     } catch (error) {
       console.error("Error fetching playlists:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchPlaylists();
-  }, []);
+  }, [fetchPlaylists]);
 
   return (
-    <div className="py-6">
+    <div className="py-6 px-4 min-h-[80vh]">
       <h1 className="text-2xl font-semibold mb-6">Your Playlists</h1>
 
       {loading ? (
@@ -35,7 +33,9 @@ const Playlists = () => {
           ))}
         </div>
       ) : playlists.length === 0 ? (
-        <p className="text-gray-500">No playlists found.</p>
+        <p className="text-gray-500 dark:text-gray-400">
+          No playlists found.
+        </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {playlists.map((playlist) => (
