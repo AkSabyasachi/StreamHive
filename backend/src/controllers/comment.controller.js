@@ -68,10 +68,7 @@ const getVideoComments = asyncHandler(async(req,res) => {
    ];
 
    const result = await Comment.aggregatePaginate(pipeline,options);
-   if(result.totalComments === 0)
-   {
-      throw new ApiError(400,"No comments yet.")
-   }
+
    
    return res
       .status(200)

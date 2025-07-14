@@ -477,15 +477,15 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
       $lookup: {
         from: "subscriptions", // The collection to join with
         localField: "_id", // Field from the input documents
-        foreignfield: "channel", // Field from the documents of the "from" collection
+        foreignField: "channel", // Field from the documents of the "from" collection
         as: "subscribers" // Output array field
       }
     },
     {
       $lookup: {
         from: "subscriptions",
-        localfield: "_id",
-        foreignfield: "subscriber",
+        localField: "_id",
+        foreignField: "subscriber",
         as: "subscribedTo"
       }
     },
@@ -497,11 +497,11 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
           $cond: {
             if: { 
               $in:[
-                req.user?.id, //Check if the current user id is in the subscribers array
+                req.user?._id, //Check if the current user id is in the subscribers array
                 "$subscribers.subscriber" //$subscribers(field) is an array of objects of "subcriber"(from model) and we are checking if the current user id is in the "subscriber" field of the objects in the "subscribers" array
               ]
             },
-            thrn : true,
+            then : true,
             else: false
           }
         }

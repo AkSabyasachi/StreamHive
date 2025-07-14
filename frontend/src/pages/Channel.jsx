@@ -15,12 +15,14 @@ const Channel = () => {
   const [activeTab, setActiveTab] = useState("videos");
   const [error, setError] = useState("");
 
+  // Refetch channel info after subscribing
   const fetchChannelData = async () => {
     try {
       setLoading(true);
-      const { data } = await axiosInstance.get(`/api/v1/users/c/${username}`);
+      const { data } = await axiosInstance.get(`/users/c/${username}`);
       setChannel(data.data);
     } catch (err) {
+      console.error("Error fetching channel:", err);
       setError("Channel not found.");
     } finally {
       setLoading(false);
@@ -28,12 +30,13 @@ const Channel = () => {
   };
 
   const fetchChannelVideos = async () => {
+    if (!channel?._id) return;
     try {
       setTabLoading(true);
       const { data } = await axiosInstance.get(
-        `/api/v1/videos?userId=${channel?._id}`
+        `/videos?userId=${channel._id}`
       );
-      setVideos(data.videos || []);
+      setVideos(data.data.videos || []);
     } catch (err) {
       console.error("Error fetching videos", err);
     } finally {
@@ -42,10 +45,11 @@ const Channel = () => {
   };
 
   const fetchCommunityPosts = async () => {
+    if (!channel?._id) return;
     try {
       setTabLoading(true);
       const { data } = await axiosInstance.get(
-        `/api/v1/community/channel/${channel?._id}`
+        `/community/channel/${channel._id}`
       );
       setCommunityPosts(data.data || []);
     } catch (err) {
@@ -69,51 +73,59 @@ const Channel = () => {
   if (error) return <p className="text-red-500 p-4">{error}</p>;
 
   return (
-    <div className="py-6 px-4">
-      {/* Channel Header */}
-      <div className="flex items-center gap-4 mb-6">
+    <div className="py-6 px-4 min-h-[80vh]">
+      {/* Cover Image */}
+      {channel.coverImage && (
+        <div className="w-full h-48 sm:h-64 mb-6 rounded-lg overflow-hidden shadow-md">
+          <img
+            src={channel.coverImage}
+            alt="Cover"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
+      {/* Channel Info */}
+      <div className="flex flex-wrap items-center gap-4 mb-6">
         <img
-          src={channel.avatar}
+          src={channel.avatar || "/default-avatar.png"}
           alt="Avatar"
-          className="w-20 h-20 rounded-full object-cover"
+          className="w-20 h-20 rounded-full object-cover border border-gray-300 dark:border-gray-700"
         />
-        <div className="flex flex-col">
+        <div className="flex flex-col justify-center">
           <h1 className="text-xl font-bold">{channel.fullname}</h1>
-          <p className="text-gray-500">@{channel.username}</p>
+          <p className="text-gray-600 dark:text-gray-400">@{channel.username}</p>
           <span className="text-sm text-gray-400">
-            {channel.subscriberCount || 0} subscribers
+            {channel.subscribersCount || 0} subscribers
           </span>
         </div>
         <div className="ml-auto">
-          <SubscribeButton channelId={channel._id} />
+          <SubscribeButton
+            channelId={channel._id}
+            isSubscribed={channel.isSubscribed}
+            onToggle={fetchChannelData} // Refetch on toggle
+          />
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
-        <button
-          onClick={() => setActiveTab("videos")}
-          className={`mr-4 pb-2 border-b-2 ${
-            activeTab === "videos"
-              ? "border-blue-500 text-blue-500"
-              : "border-transparent text-gray-500"
-          }`}
-        >
-          Videos
-        </button>
-        <button
-          onClick={() => setActiveTab("community")}
-          className={`pb-2 border-b-2 ${
-            activeTab === "community"
-              ? "border-blue-500 text-blue-500"
-              : "border-transparent text-gray-500"
-          }`}
-        >
-          Community
-        </button>
+        {["videos", "community"].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`mr-4 pb-2 border-b-2 transition-all ${
+              activeTab === tab
+                ? "border-blue-500 text-blue-500"
+                : "border-transparent text-gray-500 hover:text-blue-400"
+            }`}
+          >
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
       </div>
 
-      {/* Content */}
+      {/* Tab Content */}
       {tabLoading ? (
         <p>Loading {activeTab}...</p>
       ) : activeTab === "videos" ? (
@@ -124,7 +136,7 @@ const Channel = () => {
             ))}
           </div>
         ) : (
-          <p className="text-gray-500">No videos uploaded yet.</p>
+          <p className="text-gray-500 dark:text-gray-400">No videos uploaded yet.</p>
         )
       ) : communityPosts.length > 0 ? (
         <div className="flex flex-col gap-4">
@@ -133,7 +145,7 @@ const Channel = () => {
           ))}
         </div>
       ) : (
-        <p className="text-gray-500">No community posts yet.</p>
+        <p className="text-gray-500 dark:text-gray-400">No community posts yet.</p>
       )}
     </div>
   );

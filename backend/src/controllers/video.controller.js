@@ -372,7 +372,7 @@ const togglePublishStatus = asyncHandler(async(req,res) => {
 
    return res
       .status(200)
-      .json(new ApiResponse(200,{isPublished: video.isPublished} ,`Video is now {$video.isPublished ? "published" : "unpublished" `))
+      .json(new ApiResponse(200,{isPublished: video.isPublished} ,`Video is now ${video.isPublished ? "published" : "unpublished"}`))
    
 })
 
