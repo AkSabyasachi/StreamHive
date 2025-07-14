@@ -7,6 +7,7 @@ import ErrorMessage from "../components/common/ErrorMessage";
 import VideoCard from "../components/common/VideoCard";
 
 const Dashboard = () => {
+  const [user, setUser] = useState(null);
   const [stats, setStats] = useState(null);
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,11 +17,13 @@ const Dashboard = () => {
     try {
       setLoading(true);
 
-      const [statsRes, videosRes] = await Promise.all([
+      const [userRes, statsRes, videosRes] = await Promise.all([
+        axios.get("/users/current-user"),
         axios.get("/dashboard/stats"),
         axios.get("/dashboard/videos"),
       ]);
 
+      setUser(userRes.data.data);
       setStats(statsRes.data.data);
       setVideos(videosRes.data.data);
     } catch (err) {
@@ -40,7 +43,32 @@ const Dashboard = () => {
 
   return (
     <div className="py-6 px-4 min-h-[80vh]">
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+      {/* Cover Image */}
+      {user?.coverImage && (
+        <div className="h-48 sm:h-64 w-full rounded-xl overflow-hidden mb-6">
+          <img
+            src={user.coverImage}
+            alt="Cover"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
+      {/* Avatar and Info */}
+      <div className="flex items-center gap-4 mb-8">
+        <img
+          src={user?.avatar || "/default-avatar.png"}
+          alt={user?.fullName || "User"}
+          className="w-20 h-20 rounded-full object-cover border dark:border-gray-600"
+        />
+        <div>
+          <h2 className="text-2xl font-bold">{user?.fullName}</h2>
+          <p className="text-gray-500 dark:text-gray-400">@{user?.username}</p>
+          <p className="text-sm text-gray-400">
+            {user?.subscribersCount || 0} subscribers
+          </p>
+        </div>
+      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
@@ -55,7 +83,7 @@ const Dashboard = () => {
         <h2 className="text-xl font-semibold mb-4">Your Videos</h2>
         {videos.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400">
-            You haven’t uploaded any videos yet.
+            You haven't uploaded any videos yet.
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

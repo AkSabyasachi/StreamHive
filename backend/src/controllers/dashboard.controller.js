@@ -47,8 +47,9 @@ const getChannelVideos = asyncHandler(async (req, res) => {
    const userId = req.user._id;
 
    const videos = await Video.find({ owner: userId })
+    .populate("owner", "fullname avatar username")
     .sort({ createdAt: -1 }) // newest first
-    .select("title description thumbnail views duration createdAt");
+    .select("title description thumbnail views duration createdAt owner");
 
    return res
     .status(200)

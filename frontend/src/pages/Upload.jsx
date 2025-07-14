@@ -13,13 +13,15 @@ const Upload = () => {
   const [message, setMessage] = useState("");
 
   const handleVideoChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
+    if (!file) return;
     setVideoFile(file);
     setPreviewVideo(URL.createObjectURL(file));
   };
 
   const handleThumbnailChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
+    if (!file) return;
     setThumbnail(file);
     setPreviewThumbnail(URL.createObjectURL(file));
   };
@@ -27,8 +29,8 @@ const Upload = () => {
   const handleUpload = async (e) => {
     e.preventDefault();
 
-    if (!title || !videoFile || !thumbnail) {
-      return setMessage("❗ Title, video file, and thumbnail are required.");
+    if (!title || !description || !videoFile || !thumbnail) {
+      return setMessage("❗ Title, description, video file, and thumbnail are all required.");
     }
 
     const formData = new FormData();
@@ -40,7 +42,7 @@ const Upload = () => {
 
     try {
       setUploading(true);
-      const { data } = await axiosInstance.post("/api/v1/videos", formData, {
+      const { data } = await axiosInstance.post("/videos/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -70,16 +72,41 @@ const Upload = () => {
       <h1 className="text-2xl font-semibold mb-6">Upload Video</h1>
 
       <form className="space-y-6" onSubmit={handleUpload}>
+        {/* 📁 Video File Upload */}
         <div>
           <label className="block text-sm font-medium mb-1">Video File</label>
-          <input type="file" accept="video/*" onChange={handleVideoChange} />
+          <div className="flex items-center gap-4">
+            <label className="cursor-pointer bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded inline-block">
+              Choose Video
+              <input
+                type="file"
+                accept="video/*"
+                onChange={handleVideoChange}
+                className="hidden"
+              />
+            </label>
+            {videoFile && <span className="text-sm text-gray-500">{videoFile.name}</span>}
+          </div>
         </div>
 
+        {/* 🖼 Thumbnail Upload */}
         <div>
           <label className="block text-sm font-medium mb-1">Thumbnail</label>
-          <input type="file" accept="image/*" onChange={handleThumbnailChange} />
+          <div className="flex items-center gap-4">
+            <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded inline-block">
+              Choose Thumbnail
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleThumbnailChange}
+                className="hidden"
+              />
+            </label>
+            {thumbnail && <span className="text-sm text-gray-500">{thumbnail.name}</span>}
+          </div>
         </div>
 
+        {/* 📝 Title */}
         <div>
           <label className="block text-sm font-medium mb-1">Title</label>
           <input
@@ -91,6 +118,7 @@ const Upload = () => {
           />
         </div>
 
+        {/* 📝 Description */}
         <div>
           <label className="block text-sm font-medium mb-1">Description</label>
           <textarea
@@ -102,6 +130,7 @@ const Upload = () => {
           />
         </div>
 
+        {/* 🌐 Visibility */}
         <div>
           <label className="block text-sm font-medium mb-1">Visibility</label>
           <select
@@ -115,19 +144,22 @@ const Upload = () => {
           </select>
         </div>
 
+        {/* 🚀 Upload Button */}
         <div>
           <button
             type="submit"
             disabled={uploading}
-            className="bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 disabled:opacity-50"
+            className="bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 disabled:opacity-50"
           >
             {uploading ? "Uploading..." : "Upload"}
           </button>
         </div>
       </form>
 
+      {/* 📢 Message */}
       {message && <p className="mt-4 text-center text-sm text-blue-600">{message}</p>}
 
+      {/* 👁 Preview */}
       <div className="mt-10">
         <h2 className="text-lg font-semibold mb-2">Preview</h2>
         <div className="flex flex-col sm:flex-row gap-4 items-start">
