@@ -376,6 +376,21 @@ const togglePublishStatus = asyncHandler(async(req,res) => {
    
 })
 
+const getMyVideos = asyncHandler(async (req, res) => {
+  if (!req.user?._id) {
+    throw new ApiError(400, "Unauthorized. Please login.");
+  }
+
+  const videos = await Video.find({ owner: req.user._id })
+    .sort({ createdAt: -1 })
+    .select("-updatedAt")
+    .populate("owner", "fullname username avatar");
+
+  return res.status(200).json(
+    new ApiResponse(200, { videos }, "Your videos fetched successfully")
+  );
+});
+
 
 export { 
    getAllVideos,
@@ -383,5 +398,6 @@ export {
    getVideoById,
    updateVideo,
    deleteVideo,
-   togglePublishStatus
+   togglePublishStatus,
+   getMyVideos
 };

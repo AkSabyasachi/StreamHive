@@ -7,6 +7,7 @@ import {
   publishAVideo,
   togglePublishStatus,
   updateVideo,
+  getMyVideos
 } from "../controllers/video.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -16,10 +17,12 @@ console.log("✅ video.routes.js loaded");
 
 // PUBLIC routes
 router.route("/").get(getAllVideos);
-router.get("/:videoId",verifyJWT, getVideoById);
 
 // PROTECTED routes
 router.use(verifyJWT); // All routes below this are protected
+
+router.get("/my", getMyVideos);
+router.get("/:videoId", getVideoById);
 
 router.post(
   "/upload", 
