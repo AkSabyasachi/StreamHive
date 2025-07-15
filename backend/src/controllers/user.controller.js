@@ -1,9 +1,11 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
+import { Video } from "../models/video.model.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 //Internal function to generate access and refresh tokens (no asyncHandler used because we are not using it in any web request)
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -535,57 +537,86 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 
 });
 
-const getWatchHistory = asyncHandler(async(req,res) => {
-  /**
-   * 
-   */
+const getWatchHistory = asyncHandler(async (req, res) => {
+  if (!req.user || !req.user._id) {
+    throw new ApiError(401, "Unauthorized: No user found in request.");
+  }
 
   const user = await User.aggregate([
     {
       $match: {
-        _id: new mongoose.Types.ObjectId(req.user._id)
-      }
+        _id: new mongoose.Types.ObjectId(req.user._id),
+      },
     },
     {
       $lookup: {
         from: "videos",
-        localfield: "watchHistory",
-        foreignfield: "_id",
+        localField: "watchHistory",
+        foreignField: "_id",
         as: "watchHistory",
         pipeline: [
           {
-            $lookup: { 
+            $lookup: {
               from: "users",
-              localfield: "owner",
-              foreignfield: "_id",
+              localField: "owner",
+              foreignField: "_id",
               as: "owner",
               pipeline: [
                 {
                   $project: {
                     fullname: 1,
                     username: 1,
-                    avatar: 1
-                  }
-                }
-              ]
-            }
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
           },
           {
             $addFields: {
-              owner: {$first: "$owner"}
-            }
-            
-          }
-        ]
-      }
-    }
-  ])
+              owner: { $first: "$owner" },
+            },
+          },
+        ],
+      },
+    },
+  ]);
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, user[0].watchHistory, "Watch history fetched successfully"));
-    
-})
+  if (!user.length) {
+    throw new ApiError(404, "User not found");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      user[0].watchHistory || [],
+      "Watch history fetched successfully"
+    )
+  );
+});
+
+
+const addToWatchHistory = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(videoId)) {
+    throw new ApiError(400, "Invalid Video ID");
+  }
+
+  // Optional: Ensure video exists before adding
+  const videoExists = await Video.exists({ _id: videoId });
+  if (!videoExists) {
+    throw new ApiError(404, "Video not found");
+  }
+
+  await User.findByIdAndUpdate(req.user._id, {
+    $addToSet: { watchHistory: videoId }, // avoids duplicates
+  });
+
+  return res.status(200).json(
+    new ApiResponse(200, {}, "Video added to watch history")
+  );
+});
 
 export {
   registerUser,
@@ -598,5 +629,6 @@ export {
   updateAvatar,
   updateCoverImage,
   getUserChannelProfile, // Subscriber count and subscription count
-  getWatchHistory
+  getWatchHistory,
+  addToWatchHistory
 };
