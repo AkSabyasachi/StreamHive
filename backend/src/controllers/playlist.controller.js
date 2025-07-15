@@ -56,8 +56,15 @@ const getPlaylistById = asyncHandler(async(req,res) => {
    }
 
    const playlist = await Playlist.findById(playlistId)
-   .populate("videos","thumbnail duration title") //* .populate({path:" " , select: " "})
-   .populate("owner", "username avatar");
+     .populate({
+       path: "videos",
+       select: "thumbnail duration title owner",
+       populate: {
+         path: "owner",
+         select: "username avatar",
+       },
+     })
+     .populate("owner", "username avatar"); //* .populate({path:" " , select: " "})
 
    if(!playlist)
    {

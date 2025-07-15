@@ -8,9 +8,9 @@ console.log("✅ playlist.routes.js loaded");
 
 router.use(verifyJWT)
 
-router.get("/user/my", getUserPlaylist)
-
 router.route("/").post(createPlaylist)
+
+router.get("/user/my", getUserPlaylist)
 
 router.route("/:playlistId")
    .get(getPlaylistById)
