@@ -538,6 +538,17 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 });
 
 const getWatchHistory = asyncHandler(async (req, res) => {
+
+  const sortOption = req.query.sort || "latest"; // default
+
+  const sortStages = {
+    latest: { createdAt: -1 },
+    oldest: { createdAt: 1 },
+    views: { views: -1 },
+    az: { title: 1 },
+    za: { title: -1 },
+  };
+
   if (!req.user || !req.user._id) {
     throw new ApiError(401, "Unauthorized: No user found in request.");
   }
@@ -576,6 +587,9 @@ const getWatchHistory = asyncHandler(async (req, res) => {
             $addFields: {
               owner: { $first: "$owner" },
             },
+          },
+          {
+            $sort: sortStages[sortOption] || { createdAt: -1 }, // fallback
           },
         ],
       },
