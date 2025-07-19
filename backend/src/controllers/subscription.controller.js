@@ -6,55 +6,44 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 
 //* Subscribe or unsubscribe
-const toggleSubscriptions = asyncHandler(async(req,res) => {
-   const {channelId} = req.params;
-   const subscriberId = req.user._id;
+const toggleSubscriptions = asyncHandler(async (req, res) => {
+  const { channelId } = req.params;
+  const subscriberId = req.user._id;
 
-   if(!mongoose.Types.ObjectId.isValid(channelId))
-   {
-      throw new ApiError(400,"Invalid Channel ID")
-   }
-   if(subscriberId.toString() === channelId)
-   {
-      throw new ApiError(400,"You cannot subscribe to yourself.")
-   }
+  if (!mongoose.Types.ObjectId.isValid(channelId)) {
+    throw new ApiError(400, "Invalid Channel ID");
+  }
 
-   const existingSub = await Subscription.findOne({
-      channel: channelId,
-      subscriber: subscriberId
-   })
+  if (subscriberId.toString() === channelId) {
+    throw new ApiError(400, "You cannot subscribe to yourself.");
+  }
 
-   if(!existingSub)
-   {
-      await Subscription.create({
-         channel: channelId,
-         subscriber: subscriberId
-      });
+  const existingSub = await Subscription.findOne({
+    channel: channelId,
+    subscriber: subscriberId,
+  });
 
-      //* Auto-increment subscriber count
-      await User.findByIdAndUpdate(channelId, {
-         $inc: {subscriberCount : 1},
-      });
+  let subscribed;
 
-      return res
-         .status(200)             //Did a bug here - passed "existingSub"
-         .json(new ApiResponse(200, {}, "Subscribed successfully"));
+  if (!existingSub) {
+    await Subscription.create({ channel: channelId, subscriber: subscriberId });
+    await User.findByIdAndUpdate(channelId, { $inc: { subscriberCount: 1 } });
+    subscribed = true;
+  } else {
+    await Subscription.deleteOne({ _id: existingSub._id });
+    await User.findByIdAndUpdate(channelId, { $inc: { subscriberCount: -1 } });
+    subscribed = false;
+  }
 
-   } else 
-   {
-      await Subscription.deleteOne({_id: existingSub._id})
+  const subscribersCount = await Subscription.countDocuments({ channel: channelId });
 
-      //* Auto-decrement subscriber count 
-      await User.findByIdAndUpdate(channelId, {
-         $inc: {subscriberCount : -1},
-      });
-
-      return res
-         .status(200)
-         .json(new ApiResponse(200, {}, "Unsubscribed successfully"));
-   }
-
-})
+  return res.status(200).json(
+    new ApiResponse(200, {
+      subscribed,
+      subscribersCount,
+    }, subscribed ? "Subscribed to channel." : "Unsubscribed from channel.")
+  );
+});
 
 //* Get subscribers of a channel or user
 //* To find the number of subscribers count the number of documents according to the "channels"----"Watch the backend series vdo in case forgot"

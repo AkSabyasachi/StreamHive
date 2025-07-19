@@ -177,33 +177,25 @@ const getUserCommunityPost = asyncHandler(async(req,res) => {
    const pageNum = parseInt(page)
    const limitNum = parseInt(limit)
 
-   if(!mongoose.Types.ObjectId.isValid(userId))
-   {
+   if(!mongoose.Types.ObjectId.isValid(userId)) {
       throw new ApiError(400,"Invalid User ID.");
    }
 
-   const pipeline = [
-      {
-         $match: { owner: mongoose.Types.ObjectId(userId)}
-      },
-      {$sort: {createdAt: -1}}
-   ]
+   // Use find() instead of aggregatePaginate
+   const posts = await Community.find({ owner: userId })
+     .sort({ createdAt: -1 })
+     .skip((pageNum - 1) * limitNum)
+     .limit(limitNum)
+     .populate("owner", "username avatar fullname");
 
-   const result = await Community.aggregatePaginate(pipeline,{
-      page: pageNum,
-      limit: limitNum,
-      customLabels: {
-         docs: "posts",
-         totalDocs: "totalPosts",
-         totalPages: "totalPages",
-         page: "currentPage"
-      }
-   }).lean()
+   const totalPosts = await Community.countDocuments({ owner: userId });
 
-   return res
-      .status(200)
-      .json(new ApiResponse(200,result,"Community Posts fetched successfully."))
-
+   return res.status(200).json(new ApiResponse(200, {
+      posts,
+      totalPosts,
+      totalPages: Math.ceil(totalPosts / limitNum),
+      currentPage: pageNum
+   }, "Community Posts fetched successfully."));
 })
 
 export {

@@ -7,6 +7,7 @@ import { ApiResponse } from "../utils/apiResponse.js";
 // 1. Toggle Like on a Video
 const toggleVideoLike = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+
   if (!mongoose.Types.ObjectId.isValid(videoId)) {
     throw new ApiError(400, "Invalid Video ID");
   }
@@ -16,20 +17,24 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
     likedBy: req.user._id,
   });
 
+  let liked;
+
   if (!existingLike) {
-    await Like.create({
-      video: videoId,
-      likedBy: req.user._id,
-    });
-    return res
-      .status(200)
-      .json(new ApiResponse(200, {}, "Video liked successfully."));
+    await Like.create({ video: videoId, likedBy: req.user._id });
+    liked = true;
   } else {
     await Like.deleteOne({ _id: existingLike._id });
-    return res
-      .status(200)
-      .json(new ApiResponse(200, {}, "Video unliked successfully."));
+    liked = false;
   }
+
+  const totalLikes = await Like.countDocuments({ video: videoId });
+
+  return res.status(200).json(
+    new ApiResponse(200, {
+      liked,
+      totalLikes,
+    }, liked ? "Video liked." : "Video unliked.")
+  );
 });
 
 // 2. Toggle Like on a Comment
