@@ -1,11 +1,14 @@
-import React from "react";
+// components/common/ErrorMessage.jsx
+import React from 'react';
 
-const ErrorMessage = ({ message }) => {
-  if (!message) return null;
-
+const ErrorMessage = ({ type, children }) => {
   return (
-    <div className="bg-red-100 text-red-700 p-3 rounded text-sm mb-4 dark:bg-red-900 dark:text-red-200">
-      {message}
+    <div className={`p-3 rounded-lg ${
+      type === "error" 
+        ? "bg-red-50 text-red-800 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800" 
+        : "bg-green-50 text-green-800 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
+    }`}>
+      {children}
     </div>
   );
 };

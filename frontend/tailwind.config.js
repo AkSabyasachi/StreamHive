@@ -6,8 +6,12 @@ export default {
   ],
   darkMode: "class",
   theme: {
-    extend: {},
+  extend: {
+    colors: {
+      primary: "#3B82F6", // or any brand color you prefer
+    },
   },
+},
   plugins: [],
 }
 

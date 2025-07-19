@@ -5,10 +5,15 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import PrimaryButton from "../components/common/PrimaryButton";
 import SecondaryButton from "../components/common/SecondaryButton";
-import { FaHeart, FaRegHeart, FaEdit, FaTrash, FaPlay, FaPause } from "react-icons/fa";
-import { IoMdAdd } from "react-icons/io";
-import { MdSubscriptions, MdOutlineSubscriptions } from "react-icons/md";
-import { motion } from "framer-motion";
+import LoadingSpinner from "../components/common/LoadingSpinner";
+import ConfirmDialog from "../components/common/ConfirmDialog";
+import AddToPlaylistModal from "../components/common/AddToPlaylistModal";
+import Card from "../components/common/Card";
+import { FaEdit, FaTrash, FaShare } from "react-icons/fa";
+import { IoMdAdd, IoMdThumbsUp } from "react-icons/io";
+import { MdSubscriptions, MdOutlineSubscriptions, MdPlaylistAdd } from "react-icons/md";
+import { motion, AnimatePresence } from "framer-motion";
+import { BiLike, BiDislike } from "react-icons/bi";
 
 const Watch = () => {
   const { videoId } = useParams();
@@ -19,31 +24,37 @@ const Watch = () => {
   const [comments, setComments] = useState([]);
   const [commentInput, setCommentInput] = useState("");
   const [editingCommentId, setEditingCommentId] = useState(null);
-  const [replyInput, setReplyInput] = useState("");
-  const [activeReply, setActiveReply] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [subscribed, setSubscribed] = useState(false);
-  const [likedVideo, setLikedVideo] = useState(false);
-  const [error, setError] = useState("");
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
+  const [showDescription, setShowDescription] = useState(false);
 
-  // Fetch video and comments
+  const [likedVideo, setLikedVideo] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  const [subsCount, setSubsCount] = useState(0);
+
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const [deleteCommentId, setDeleteCommentId] = useState(null);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   const fetchVideoAndComments = async () => {
     try {
       setLoading(true);
-      setError("");
-
       const [videoRes, commentRes] = await Promise.all([
         axios.get(`/videos/${videoId}`),
-        axios.get(`/comments/video/${videoId}`)
+        axios.get(`/comments/video/${videoId}`),
       ]);
 
       const videoData = videoRes.data.data;
       setVideo(videoData);
       setComments(commentRes.data.data.comments || []);
-
-      setLikedVideo(videoData?.isLiked || false);
-      setSubscribed(videoData?.isSubscribed || false);
+      setLikedVideo(videoData?.isLiked);
+      setSubscribed(videoData?.isSubscribed);
+      setLikesCount(videoData?.likesCount || 0);
+      setSubsCount(videoData?.owner?.subscriberCount || 0);
     } catch (err) {
       console.error("Error loading video:", err);
       setError("Video not found or failed to load.");
@@ -52,7 +63,6 @@ const Watch = () => {
     }
   };
 
-  // Track watch history
   const trackWatchHistory = async () => {
     if (!user?._id || !videoId) return;
     try {
@@ -62,45 +72,58 @@ const Watch = () => {
     }
   };
 
-  // useEffect - fetch video + then track history
   useEffect(() => {
     const load = async () => {
       await fetchVideoAndComments();
-      await trackWatchHistory(); // 👈 log only after video fetch
+      await trackWatchHistory();
     };
     load();
   }, [videoId]);
 
-  // Format time ago
-  const formatTimeAgo = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const seconds = Math.floor((now - date) / 1000);
-    if (seconds < 60) return "just now";
-
-    const intervals = {
-      year: 31536000,
-      month: 2592000,
-      week: 604800,
-      day: 86400,
-      hour: 3600,
-      minute: 60,
-    };
-
-    for (const [unit, secondsInUnit] of Object.entries(intervals)) {
-      const interval = Math.floor(seconds / secondsInUnit);
-      if (interval >= 1) {
-        return `${interval} ${unit}${interval > 1 ? "s" : ""} ago`;
-      }
-    }
-
-    return "recently";
+  const confirm = (message, actionFn, id = null) => {
+    setConfirmMessage(message);
+    setDeleteCommentId(id);
+    setConfirmAction(() => () => {
+      actionFn();
+      setShowConfirm(false);
+    });
+    setShowConfirm(true);
   };
 
-  // Submit comment (or edit)
+  const handleToggleLike = async () => {
+    const newLiked = !likedVideo;
+    // Optimistic UI update
+    setLikedVideo(newLiked);
+    setLikesCount(prev => newLiked ? prev + 1 : prev - 1);
+    
+    try {
+      await axios.post(`/likes/toggle/v/${videoId}`);
+    } catch (err) {
+      // Revert on error
+      setLikedVideo(!newLiked);
+      setLikesCount(prev => newLiked ? prev - 1 : prev + 1);
+      console.error("Failed to toggle like", err);
+    }
+  };
+
+  const handleToggleSubscribe = async () => {
+    const newSubscribed = !subscribed;
+    // Optimistic UI update
+    setSubscribed(newSubscribed);
+    setSubsCount(prev => newSubscribed ? prev + 1 : prev - 1);
+    
+    try {
+      await axios.post(`/subscription/ch/${video.owner._id}`);
+    } catch (err) {
+      // Revert on error
+      setSubscribed(!newSubscribed);
+      setSubsCount(prev => newSubscribed ? prev - 1 : prev + 1);
+      console.error("Failed to toggle subscription", err);
+    }
+  };
+
   const handleCommentSubmit = async () => {
     if (!commentInput.trim()) return;
-
     try {
       if (editingCommentId) {
         await axios.patch(`/comments/c/${editingCommentId}`, {
@@ -111,216 +134,377 @@ const Watch = () => {
           content: commentInput,
         });
       }
-
       setCommentInput("");
       setEditingCommentId(null);
-      fetchVideoAndComments();
+      fetchVideoAndComments(); // Refresh comments after update
     } catch (err) {
       console.error("Failed to submit comment:", err);
     }
   };
 
-  // Like toggle
-  const handleToggleVideoLike = async () => {
+  const handleDeleteComment = async (id) => {
     try {
-      await axios.post(`/likes/toggle/v/${videoId}`);
-      setLikedVideo((prev) => !prev);
+      await axios.delete(`/comments/c/${id}`);
+      // Remove the comment from local state immediately
+      setComments(prev => prev.filter(comment => comment._id !== id));
     } catch (err) {
-      console.error("Error toggling like:", err);
-    }
-  };
-
-  // Subscribe toggle
-  const handleSubscribeToggle = async () => {
-    try {
-      await axios.post(`/subscription/ch/${video?.owner?._id}`);
-      setSubscribed((prev) => !prev);
-    } catch (err) {
-      console.error("Error subscribing:", err);
-    }
-  };
-
-  const handleDeleteComment = async (commentId) => {
-    try {
-      await axios.delete(`/comments/c/${commentId}`);
-      fetchVideoAndComments();
-    } catch (err) {
-      console.error("Error deleting comment:", err);
+      console.error("Failed to delete comment:", err);
     }
   };
 
   const handleEditComment = (comment) => {
     setCommentInput(comment.content);
     setEditingCommentId(comment._id);
-    setActiveReply(null);
+    // Scroll to comment input for better UX
+    document.getElementById("comment-input")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const videoUrl = typeof video?.videoFile === "string" ? video.videoFile : video?.videoFile?.url;
+  const formatTimeAgo = (dateStr) => {
+    const date = new Date(dateStr);
+    const diff = (Date.now() - date.getTime()) / 1000;
+    const map = {
+      year: 31536000,
+      month: 2592000,
+      week: 604800,
+      day: 86400,
+      hour: 3600,
+      minute: 60,
+    };
+    for (let [unit, value] of Object.entries(map)) {
+      const elapsed = Math.floor(diff / value);
+      if (elapsed > 0) return `${elapsed} ${unit}${elapsed > 1 ? "s" : ""} ago`;
+    }
+    return "just now";
+  };
+
+  const formatNumber = (num) => {
+    if (!num) return "0";
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+    if (num >= 1000) return (num / 1000).toFixed(1) + "K";
+    return num.toString();
+  };
+
+  const truncateDescription = (text, maxLength = 150) => {
+    if (!text) return "No description provided.";
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + "...";
+  };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <LoadingSpinner size={32} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-20">
-        <div className="text-red-500 text-xl mb-4">⚠️ {error}</div>
-        <PrimaryButton onClick={fetchVideoAndComments}>Retry</PrimaryButton>
+      <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <Card className="p-8 text-center max-w-md bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-xl">
+          <div className="text-red-500 text-lg mb-4">⚠️ Error</div>
+          <p className="text-gray-600 dark:text-gray-300">{error}</p>
+          <PrimaryButton className="mt-6" onClick={() => window.location.href = "/"}>
+            Go to Home
+          </PrimaryButton>
+        </Card>
       </div>
     );
   }
 
+  const videoUrl =
+    typeof video?.videoFile === "string"
+      ? video.videoFile
+      : video?.videoFile?.url;
+
   return (
-    <div className="py-6 max-w-4xl mx-auto px-4">
-      {/* Video Player */}
-      <motion.div
-        className="bg-black rounded-xl overflow-hidden shadow-lg relative"
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        <video
-          controls
-          className="w-full aspect-video"
-          src={videoUrl}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-        />
-        <div className="absolute top-4 right-4 bg-black bg-opacity-50 rounded-full p-2">
-          {isPlaying ? <FaPause className="text-white text-xl" /> : <FaPlay className="text-white text-xl" />}
-        </div>
-      </motion.div>
-
-      {/* Info Section */}
-      <div className="mt-4">
-        <h1 className="text-2xl font-bold">{video.title}</h1>
-
-        <div className="flex flex-wrap items-center justify-between mt-2 gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
-              <img src={video.owner?.avatar} alt={video.owner?.username} className="w-full h-full object-cover" />
-            </div>
-            <div>
-              <div className="font-medium">@{video.owner?.username}</div>
-              <div className="text-sm text-gray-600">
-                {video.views} views • {formatTimeAgo(video.createdAt)}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-2 flex-wrap">
-            <motion.div whileTap={{ scale: 0.9 }}>
-              <PrimaryButton onClick={handleToggleVideoLike} className="flex items-center gap-2">
-                {likedVideo ? <FaHeart className="text-red-500" /> : <FaRegHeart />}
-                {likedVideo ? "Liked" : "Like"}
-              </PrimaryButton>
-            </motion.div>
-
-            <motion.div whileTap={{ scale: 0.9 }}>
-              <SecondaryButton onClick={handleSubscribeToggle} className="flex items-center gap-2">
-                {subscribed ? (
-                  <MdSubscriptions className="text-blue-500" />
-                ) : (
-                  <MdOutlineSubscriptions />
-                )}
-                {subscribed ? "Subscribed" : "Subscribe"}
-              </SecondaryButton>
-            </motion.div>
-
-            <motion.div whileTap={{ scale: 0.9 }}>
-              <SecondaryButton onClick={() => alert("🎵 Playlist integration coming soon!")}>
-                <IoMdAdd className="mr-1" />
-                Save
-              </SecondaryButton>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Description */}
-        <div className="mt-6">
-          <div
-            className={`rounded-2xl p-5 shadow-sm border ${
-              theme === "dark"
-                ? "bg-gray-800 border-gray-700 text-white"
-                : "bg-gradient-to-br from-gray-50 to-white border-gray-100"
-            }`}
-          >
-            <h3 className="text-lg font-semibold mb-2">Description</h3>
-            <p className="whitespace-pre-wrap break-words leading-relaxed">
-              {video.description || "No description provided."}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Comments Section */}
-      <div className="mt-10">
-        <h2 className="text-xl font-bold mb-4">Comments ({comments.length})</h2>
-        {/* Add comment */}
-        <div className="flex gap-3 mb-6">
-          <img src={user?.avatar} alt={user?.username} className="w-10 h-10 rounded-full object-cover" />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="flex gap-6">
+          {/* Main Content - Left Side */}
           <div className="flex-1">
-            <input
-              type="text"
-              value={commentInput}
-              onChange={(e) => setCommentInput(e.target.value)}
-              placeholder="Add a comment..."
-              className="w-full border-b-2 border-gray-300 py-2 px-1 focus:border-blue-500 focus:outline-none"
-            />
-            <div className="flex justify-end gap-2 mt-2">
-              {editingCommentId && (
-                <SecondaryButton onClick={() => setEditingCommentId(null)}>Cancel</SecondaryButton>
-              )}
-              <PrimaryButton
-                onClick={handleCommentSubmit}
-                disabled={!commentInput.trim()}
-              >
-                {editingCommentId ? "Update" : "Comment"}
-              </PrimaryButton>
-            </div>
-          </div>
-        </div>
-
-        {/* Comment list */}
-        <div className="space-y-6">
-          {comments.length === 0 ? (
-            <p className="text-center text-gray-500 py-6">No comments yet.</p>
-          ) : (
-            comments.map((comment) => (
-              <div key={comment._id} className="border-b pb-4">
-                <div className="flex gap-3">
-                  <img
-                    src={comment.owner?.avatar}
-                    alt={comment.owner?.username}
-                    className="w-9 h-9 rounded-full object-cover"
+            {/* Enhanced Video Player */}
+            <div className="mb-6">
+              <div className="relative overflow-hidden rounded-2xl shadow-2xl bg-black">
+                <div className="relative pb-[56.25%] h-0">
+                  <video 
+                    controls 
+                    className="absolute inset-0 w-full h-full rounded-2xl" 
+                    src={videoUrl}
+                    poster={video?.thumbnail}
                   />
-                  <div className="flex-1">
-                    <div className="flex justify-between">
-                      <div>
-                        <span className="font-semibold">@{comment.owner?.username}</span>
-                        <span className="text-sm text-gray-500 ml-2">
-                          {formatTimeAgo(comment.createdAt)}
-                        </span>
-                      </div>
-                      {user?._id === comment.owner?._id && (
-                        <div className="flex gap-3">
-                          <button onClick={() => handleEditComment(comment)}><FaEdit /></button>
-                          <button onClick={() => handleDeleteComment(comment._id)}><FaTrash /></button>
-                        </div>
-                      )}
-                    </div>
-                    <p className="mt-1 ml-1">{comment.content}</p>
-                  </div>
                 </div>
               </div>
-            ))
-          )}
+            </div>
+
+            {/* Video Title & Metadata */}
+            <div className="mb-6">
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-3 leading-tight">
+                {video?.title}
+              </h1>
+              <div className="flex items-center text-gray-600 dark:text-gray-300 text-sm gap-2 mb-4">
+                <span className="font-medium">{formatNumber(video?.views)} views</span>
+                <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                <span>{formatTimeAgo(video?.createdAt)}</span>
+              </div>
+
+              {/* Enhanced Action Buttons */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <motion.button 
+                    onClick={handleToggleLike}
+                    whileTap={{ scale: 0.95 }}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium transition-all duration-200 ${
+                      likedVideo 
+                        ? 'bg-blue-500 text-white shadow-lg hover:bg-blue-600' 
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
+                    }`}
+                  >
+                    <BiLike className="text-lg" />
+                    <span>{formatNumber(likesCount)}</span>
+                  </motion.button>
+
+                  <motion.button 
+                    whileTap={{ scale: 0.95 }}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-full font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all duration-200"
+                  >
+                    <BiDislike className="text-lg" />
+                  </motion.button>
+
+                  <motion.button 
+                    onClick={() => setShowPlaylistModal(true)}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-full font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all duration-200"
+                  >
+                    <MdPlaylistAdd className="text-lg" />
+                    <span>Save</span>
+                  </motion.button>
+
+                  <motion.button 
+                    whileTap={{ scale: 0.95 }}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-full font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all duration-200"
+                  >
+                    <FaShare className="text-sm" />
+                    <span>Share</span>
+                  </motion.button>
+                </div>
+              </div>
+            </div>
+
+            {/* Channel Info */}
+            <div className="mb-6 p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <img
+                    src={video?.owner?.avatar}
+                    alt={video?.owner?.username}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
+                      {video?.owner?.username}
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {formatNumber(subsCount)} subscribers
+                    </p>
+                  </div>
+                </div>
+
+                <motion.button 
+                  onClick={handleToggleSubscribe}
+                  whileTap={{ scale: 0.95 }}
+                  className={`px-6 py-2.5 rounded-full font-semibold flex items-center gap-2 transition-all duration-200 ${
+                    subscribed 
+                      ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200' 
+                      : 'bg-red-600 text-white hover:bg-red-700'
+                  }`}
+                >
+                  {subscribed ? (
+                    <>
+                      <MdSubscriptions />
+                      <span>Subscribed</span>
+                    </>
+                  ) : (
+                    <>
+                      <MdOutlineSubscriptions />
+                      <span>Subscribe</span>
+                    </>
+                  )}
+                </motion.button>
+              </div>
+            </div>
+
+            {/* Enhanced Description */}
+            <div className="p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="text-gray-800 dark:text-gray-200">
+                {showDescription ? (
+                  <div>
+                    <p className="whitespace-pre-wrap leading-relaxed mb-4">
+                      {video?.description || "No description provided."}
+                    </p>
+                    <button
+                      onClick={() => setShowDescription(false)}
+                      className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                    >
+                      Show less
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="whitespace-pre-wrap leading-relaxed mb-4">
+                      {truncateDescription(video?.description)}
+                    </p>
+                    {video?.description && video.description.length > 150 && (
+                      <button
+                        onClick={() => setShowDescription(true)}
+                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                      >
+                        Show more
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Comments Sidebar - Right Side */}
+          <div className="w-80 flex-shrink-0">
+            <div className="sticky top-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 h-[calc(100vh-200px)] flex flex-col">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Comments ({comments.length})
+                  </h2>
+                </div>
+
+                {/* Add Comment */}
+                {user && (
+                  <div className="p-4 border-b border-gray-200 dark:border-gray-700" id="comment-input">
+                    <div className="flex gap-3 mb-3">
+                      <img
+                        src={user?.avatar}
+                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                        alt={user?.username}
+                      />
+                      <div className="flex-1">
+                        <textarea
+                          value={commentInput}
+                          onChange={(e) => setCommentInput(e.target.value)}
+                          placeholder="Add a comment..."
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-750 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                          rows="3"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      {editingCommentId && (
+                        <button
+                          onClick={() => {
+                            setEditingCommentId(null);
+                            setCommentInput("");
+                          }}
+                          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                      <button 
+                        onClick={handleCommentSubmit}
+                        disabled={!commentInput.trim()}
+                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                          commentInput.trim() 
+                            ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                            : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        {editingCommentId ? "Update" : "Comment"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Comments List */}
+                <div className="flex-1 overflow-y-auto p-4">
+                  {comments.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500 dark:text-gray-400 text-sm">
+                        No comments yet. Be the first to comment!
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <AnimatePresence>
+                        {comments.map((comment) => (
+                          <motion.div
+                            key={comment._id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="flex gap-3"
+                          >
+                            <img
+                              src={comment.owner?.avatar}
+                              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                              alt={comment.owner?.username}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between mb-1">
+                                <div>
+                                  <span className="font-medium text-gray-900 dark:text-white text-sm">
+                                    {comment.owner?.username}
+                                  </span>
+                                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                                    {formatTimeAgo(comment.createdAt)}
+                                  </span>
+                                </div>
+                                
+                                {user?._id === comment.owner?._id && (
+                                  <div className="flex gap-1 ml-2">
+                                    <button
+                                      onClick={() => handleEditComment(comment)}
+                                      className="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 p-1"
+                                    >
+                                      <FaEdit size={12} />
+                                    </button>
+                                    <button
+                                      onClick={() => confirm("Delete this comment?", () => handleDeleteComment(comment._id), comment._id)}
+                                      className="text-gray-400 hover:text-red-600 dark:hover:text-red-400 p-1"
+                                    >
+                                      <FaTrash size={12} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed break-words">
+                                {comment.content}
+                              </p>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <AddToPlaylistModal
+        isOpen={showPlaylistModal}
+        onClose={() => setShowPlaylistModal(false)}
+        videoId={videoId}
+      />
+
+      <ConfirmDialog
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={confirmAction}
+        message={confirmMessage}
+      />
     </div>
   );
 };

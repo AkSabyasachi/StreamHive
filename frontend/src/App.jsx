@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Layout from "./components/layout/Layout";
+import { Toaster } from "react-hot-toast";
 
 // Pages
 import Home from "./pages/Home";
@@ -13,8 +14,10 @@ import Channel from "./pages/Channel";
 import Watch from "./pages/Watch";
 import YourVideos from "./pages/YourVideos";
 import Upload from "./pages/Upload";
-import Signup from "./pages/SignUp";
+import Signup from "./pages/Signup";
 import Login from "./pages/Login";
+import PlaylistDetail from "./pages/PlaylistDetail";
+import MyCommunityPosts from "./pages/MyCommunityPosts";
 
 // 🔐 PrivateRoute wrapper
 import PrivateRoute from "./components/PrivateRoute";
@@ -23,6 +26,7 @@ function App() {
   return (
     <Router>
       <Layout>
+        <Toaster position="top-right" reverseOrder={false} />
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
@@ -64,6 +68,23 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/playlists/:playlistId"
+            element={
+              <PrivateRoute>
+                <PlaylistDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/community"
+            element={
+              <PrivateRoute>
+                <MyCommunityPosts />
+              </PrivateRoute>
+            }
+          />
+
           <Route
             path="/liked"
             element={
