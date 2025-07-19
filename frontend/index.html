@@ -1,14 +1,163 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
+    <title>StreamHive</title>
+    
+    <!-- Favicon matching StreamHive logo -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%237c3aed'/%3E%3Cstop offset='50%25' stop-color='%232563eb'/%3E%3Cstop offset='100%25' stop-color='%234338ca'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='6' fill='url(%23grad)'/%3E%3Cpath d='M12 9 L22 16 L12 23 z' fill='white'/%3E%3C/svg%3E" />
+    
+    <style>
+      /* Splash screen styles */
+      #splash-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to bottom, #0f172a, #1e293b);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease-out;
+      }
+      
+      /* Logo animation */
+      .logo-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+        margin-bottom: 2rem;
+      }
+      
+      .logo-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(to bottom right, #7c3aed, #2563eb, #4338ca);
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        animation: pulse 2s infinite;
+      }
+      
+      .logo-icon::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(to right, rgba(124, 58, 237, 0.3), rgba(66, 56, 202, 0.3));
+        border-radius: 12px;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      
+      .logo-icon:hover::after {
+        opacity: 1;
+      }
+      
+      .logo-play {
+        width: 24px;
+        height: 24px;
+        fill: white;
+        transform: translateX(2px);
+      }
+      
+      .logo-text {
+        margin-left: 16px;
+      }
+      
+      .logo-text span {
+        font-size: 2.2rem;
+        font-weight: 800;
+      }
+      
+      .logo-text span:first-child {
+        background: linear-gradient(to right, #a78bfa, #60a5fa, #818cf8);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      
+      .logo-text span:last-child {
+        color: white !important;
+      }
+      
+      .logo-subtitle {
+        color: #cbd5e1;
+        font-size: 1rem;
+        margin-top: 8px;
+        text-align: center;
+      }
+      
+      .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        border-top-color: #818cf8;
+        animation: spin 1s linear infinite;
+      }
+      
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+        }
+        70% {
+          transform: scale(1.05);
+          box-shadow: 0 0 0 15px rgba(99, 102, 241, 0);
+        }
+        100% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+        }
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
+    <!-- Splash screen with StreamHive logo -->
+    <div id="splash-screen">
+      <div class="logo-container">
+        <div class="logo-icon">
+          <svg class="logo-play" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span>Stream</span><span>Hive</span>
+          <div class="logo-subtitle">Where creators thrive</div>
+        </div>
+      </div>
+      <div class="loading-spinner"></div>
+    </div>
+    
     <div id="root"></div>
     <div id="modal-root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <script>
+      // Hide splash screen when app is loaded
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const splashScreen = document.getElementById('splash-screen');
+          splashScreen.style.opacity = '0';
+          
+          setTimeout(() => {
+            splashScreen.style.display = 'none';
+          }, 500);
+        }, 1500);
+      });
+    </script>
   </body>
 </html>
