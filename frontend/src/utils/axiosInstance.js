@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: "/api/v1", // All API routes are prefixed with this
+  baseURL: import.meta.env.VITE_API_URL, // All API routes are prefixed with this
   withCredentials: true, // Includes cookies in requests
 });
 
