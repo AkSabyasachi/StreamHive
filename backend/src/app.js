@@ -16,21 +16,51 @@ import dashboardRouter from "./routes/dashboard.routes.js";
 
 const app = express(); // Creates the Express application instance
 
-// 1. CORS Configuration (Cross-Origin Resource Sharing)
 app.use(cors({
-  origin: process.env.CORS_ORIGIN, // Restricts API access to specified frontend URL
-  credentials: true, // Allows cookies/authorization headers in cross-origin requests
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps)
+    if (!origin) return callback(null, true);
+    
+    // List of allowed origins
+    const allowedOrigins = [
+      process.env.CORS_ORIGIN,
+      "http://localhost:5173", // Local development
+      "https://stream-hive-gztm.vercel.app" // Your production frontend
+    ];
+
+    // Allow if origin is in whitelist
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Block if not allowed
+    const error = new Error(`CORS blocked: ${origin} not allowed`);
+    error.status = 403;
+    return callback(error, false);
+  },
+  credentials: true, // REQUIRED for cookies
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  exposedHeaders: ["Set-Cookie"] // Needed for cookies
 }));
 
 // 2. Body Parsing Middleware
-app.use(express.json({ limit: "50kb" })); // Parses JSON request bodies
-app.use(express.urlencoded({ extended: true, limit: "50kb" })); // Parses URL-encoded forms
+app.use(express.json({ limit: "50kb" }));
+app.use(express.urlencoded({ extended: true, limit: "50kb" }));
 
 // 3. Static File Serving
-app.use(express.static("public")); // Serves files from the 'public' directory
+app.use(express.static("public"));
 
-// 4. Cookie Parser
-app.use(cookieParser()); // Parses cookies into req.cookies object
+// 4. Cookie Parser - MUST come before routes
+app.use(cookieParser());
+
+// 5. Debugging Middleware - Add this temporarily
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  console.log('Cookies:', req.cookies);
+  console.log('Authorization:', req.headers.authorization);
+  next();
+});
 
 
 

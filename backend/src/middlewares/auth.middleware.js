@@ -3,35 +3,44 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/apiError.js";
 
-export const verifyJWT = asyncHandler(async(req,res,next) => 
-  {
-
+export const verifyJWT = asyncHandler(async (req, res, next) => {
   try {
-    // Extract token from cookies or Authorization header
-    const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ","")
-  
-    // If token is not present, throw an error
-    if(!token)
-    {
-      throw new ApiError(401,"Unauthorized access")
+    // 1. Extract token from cookies or Authorization header
+    const token = req.cookies?.accessToken || 
+                 req.header("Authorization")?.replace("Bearer ", "");
+    
+    console.log("[JWT] Token:", token); // Debugging
+
+    if (!token) {
+      throw new ApiError(401, "Unauthorized access: No token provided");
     }
-  
-    // Verify if provided token is valid
-    const decodedToken = jwt.verify(token,process.env.ACCESS_TOKEN_SECRET)
-  
-    // A db query to find the user by ID from the decoded token
-    // If user is not found or token is invalid, throw an error
-    const user = await User.findById(decodedToken?._id).select("-password -refreshToken")
-    if(!user)
-    {
-      throw new ApiError(401,"Invalid Access Token")
+
+    // 2. Verify token
+    const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+    console.log("[JWT] Decoded:", decodedToken); // Debugging
+
+    // 3. Find user - use cache if possible
+    const user = await User.findById(decodedToken?._id).select("-password -refreshToken");
+    
+    if (!user) {
+      throw new ApiError(401, "Invalid Access Token: User not found");
     }
-  
-    req.user = user; // Attach user to the request object
+
+    // 4. Attach user to request
+    req.user = user;
     next();
 
   } catch (error) {
-    throw new ApiError(401, error?.message || "Invalid access token")
+    // Handle specific JWT errors
+    let errorMessage = "Invalid access token";
+    
+    if (error.name === "TokenExpiredError") {
+      errorMessage = "Token expired";
+    } else if (error.name === "JsonWebTokenError") {
+      errorMessage = "Invalid token format";
+    }
+    
+    console.error("[JWT] Error:", errorMessage);
+    throw new ApiError(401, errorMessage);
   }
-
-})
+});
