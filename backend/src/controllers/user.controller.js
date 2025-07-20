@@ -189,6 +189,8 @@ const loginUser = asyncHandler(async (req, res) => {
   const options = {
     httpOnly: true, // Prevents client-side JavaScript from accessing cookies
     secure: true,   // Ensures cookies are only sent over HTTPS
+    sameSite: 'none', // This is crucial for cross-origin cookies
+    maxAge: 24 * 60 * 60 * 1000, // 1 day or your session length
   };
 
   //* 10. Send success response with user info and tokens
@@ -224,8 +226,10 @@ const logoutUser = asyncHandler(async (req, res) => {
 
   // 2. Set secure cookie options
   const options = {
-    httpOnly: true,
-    secure: true,
+    httpOnly: true, // Prevents client-side JavaScript from accessing cookies
+    secure: true,   // Ensures cookies are only sent over HTTPS
+    sameSite: 'none', // This is crucial for cross-origin cookies
+    maxAge: 24 * 60 * 60 * 1000, // 1 day or your session length
   };
 
   // 3. Clear access and refresh tokens from cookies
@@ -278,8 +282,10 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   try {
     // 4. Generate new access token
     const options = {
-      httpOnly: true,
-      secure: true,
+      httpOnly: true, // Prevents client-side JavaScript from accessing cookies
+      secure: true,   // Ensures cookies are only sent over HTTPS
+      sameSite: 'none', // This is crucial for cross-origin cookies
+      maxAge: 24 * 60 * 60 * 1000, // 1 day or your session length
     };
     const { accessToken, newrefreshToken } =
       await generateAccessAndRefreshTokens(user._id);

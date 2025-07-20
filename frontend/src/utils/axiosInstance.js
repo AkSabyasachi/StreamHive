@@ -1,7 +1,11 @@
 import axios from "axios";
 
+const baseURL = import.meta.env.DEV 
+  ? "/api/v1" 
+  : import.meta.env.VITE_API_URL;
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL, // All API routes are prefixed with this
+  baseURL, // All API routes are prefixed with this
   withCredentials: true, // Includes cookies in requests
 });
 
