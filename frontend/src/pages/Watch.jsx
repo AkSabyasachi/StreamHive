@@ -9,8 +9,8 @@ import LoadingSpinner from "../components/common/LoadingSpinner";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import AddToPlaylistModal from "../components/common/AddToPlaylistModal";
 import Card from "../components/common/Card";
-import { FaEdit, FaTrash, FaShare } from "react-icons/fa";
-import { IoMdAdd, IoMdThumbsUp } from "react-icons/io";
+import { FaEdit, FaTrash, FaShare, FaEllipsisV } from "react-icons/fa";
+import { IoMdThumbsUp } from "react-icons/io";
 import { MdSubscriptions, MdOutlineSubscriptions, MdPlaylistAdd } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 import { BiLike, BiDislike } from "react-icons/bi";
@@ -26,6 +26,7 @@ const Watch = () => {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
+  const [showMoreActions, setShowMoreActions] = useState(false);
 
   const [likedVideo, setLikedVideo] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
@@ -219,17 +220,18 @@ const Watch = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="flex gap-6">
-          {/* Main Content - Left Side */}
-          <div className="flex-1">
-            {/* Enhanced Video Player */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        {/* Main Content */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Video Player and Details */}
+          <div className="w-full lg:w-2/3">
+            {/* Video Player */}
             <div className="mb-6">
-              <div className="relative overflow-hidden rounded-2xl shadow-2xl bg-black">
+              <div className="relative overflow-hidden rounded-xl md:rounded-2xl shadow-lg md:shadow-2xl bg-black">
                 <div className="relative pb-[56.25%] h-0">
                   <video 
                     controls 
-                    className="absolute inset-0 w-full h-full rounded-2xl" 
+                    className="absolute inset-0 w-full h-full rounded-xl md:rounded-2xl" 
                     src={videoUrl}
                     poster={video?.thumbnail}
                   />
@@ -239,34 +241,34 @@ const Watch = () => {
 
             {/* Video Title & Metadata */}
             <div className="mb-6">
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-3 leading-tight">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-3 leading-tight">
                 {video?.title}
               </h1>
-              <div className="flex items-center text-gray-600 dark:text-gray-300 text-sm gap-2 mb-4">
+              <div className="flex flex-wrap items-center text-gray-600 dark:text-gray-300 text-sm gap-x-4 gap-y-2 mb-4">
                 <span className="font-medium">{formatNumber(video?.views)} views</span>
-                <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                <span>{formatTimeAgo(video?.createdAt)}</span>
+                <span className="hidden sm:block w-1 h-1 bg-gray-400 rounded-full"></span>
+                <span className="block">{formatTimeAgo(video?.createdAt)}</span>
               </div>
 
-              {/* Enhanced Action Buttons */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              {/* Action Buttons - Responsive */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <motion.button 
                     onClick={handleToggleLike}
                     whileTap={{ scale: 0.95 }}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-medium transition-all duration-200 ${
+                    className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-full font-medium transition-all duration-200 ${
                       likedVideo 
                         ? 'bg-blue-500 text-white shadow-lg hover:bg-blue-600' 
                         : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
                     }`}
                   >
                     <BiLike className="text-lg" />
-                    <span>{formatNumber(likesCount)}</span>
+                    <span className="text-xs sm:text-sm">{formatNumber(likesCount)}</span>
                   </motion.button>
 
                   <motion.button 
                     whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all duration-200"
+                    className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-full font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all duration-200"
                   >
                     <BiDislike className="text-lg" />
                   </motion.button>
@@ -274,37 +276,73 @@ const Watch = () => {
                   <motion.button 
                     onClick={() => setShowPlaylistModal(true)}
                     whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all duration-200"
+                    className="hidden sm:flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-full font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all duration-200"
                   >
                     <MdPlaylistAdd className="text-lg" />
-                    <span>Save</span>
+                    <span className="text-xs sm:text-sm">Save</span>
                   </motion.button>
 
                   <motion.button 
                     whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all duration-200"
+                    className="hidden sm:flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 rounded-full font-medium bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all duration-200"
                   >
                     <FaShare className="text-sm" />
-                    <span>Share</span>
+                    <span className="text-xs sm:text-sm">Share</span>
                   </motion.button>
+                  
+                  {/* Mobile More Actions Button */}
+                  <div className="relative sm:hidden">
+                    <motion.button 
+                      onClick={() => setShowMoreActions(!showMoreActions)}
+                      whileTap={{ scale: 0.95 }}
+                      className="flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750"
+                    >
+                      <FaEllipsisV className="text-sm" />
+                    </motion.button>
+                    
+                    <AnimatePresence>
+                      {showMoreActions && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute right-0 top-12 z-10 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+                        >
+                          <button 
+                            onClick={() => setShowPlaylistModal(true)}
+                            className="w-full px-4 py-3 text-left text-sm flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            <MdPlaylistAdd />
+                            <span>Save to playlist</span>
+                          </button>
+                          <button 
+                            className="w-full px-4 py-3 text-left text-sm flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            <FaShare />
+                            <span>Share video</span>
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Channel Info */}
-            <div className="mb-6 p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            {/* Channel Info - Responsive */}
+            <div className="mb-6 p-4 sm:p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
                   <img
                     src={video?.owner?.avatar}
                     alt={video?.owner?.username}
-                    className="w-12 h-12 rounded-full object-cover"
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover"
                   />
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
+                    <h3 className="font-semibold text-gray-900 dark:text-white text-base sm:text-lg">
                       {video?.owner?.username}
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                       {formatNumber(subsCount)} subscribers
                     </p>
                   </div>
@@ -313,7 +351,7 @@ const Watch = () => {
                 <motion.button 
                   onClick={handleToggleSubscribe}
                   whileTap={{ scale: 0.95 }}
-                  className={`px-6 py-2.5 rounded-full font-semibold flex items-center gap-2 transition-all duration-200 ${
+                  className={`w-full sm:w-auto px-4 sm:px-6 py-2.5 rounded-full font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
                     subscribed 
                       ? 'bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200' 
                       : 'bg-red-600 text-white hover:bg-red-700'
@@ -321,13 +359,13 @@ const Watch = () => {
                 >
                   {subscribed ? (
                     <>
-                      <MdSubscriptions />
-                      <span>Subscribed</span>
+                      <MdSubscriptions className="text-base" />
+                      <span className="text-sm">Subscribed</span>
                     </>
                   ) : (
                     <>
-                      <MdOutlineSubscriptions />
-                      <span>Subscribe</span>
+                      <MdOutlineSubscriptions className="text-base" />
+                      <span className="text-sm">Subscribe</span>
                     </>
                   )}
                 </motion.button>
@@ -335,8 +373,8 @@ const Watch = () => {
             </div>
 
             {/* Enhanced Description */}
-            <div className="p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-              <div className="text-gray-800 dark:text-gray-200">
+            <div className="p-4 sm:p-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="text-gray-800 dark:text-gray-200 text-sm sm:text-base">
                 {showDescription ? (
                   <div>
                     <p className="whitespace-pre-wrap leading-relaxed mb-4">
@@ -368,10 +406,10 @@ const Watch = () => {
             </div>
           </div>
 
-          {/* Comments Sidebar - Right Side */}
-          <div className="w-80 flex-shrink-0">
-            <div className="sticky top-6">
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 h-[calc(100vh-200px)] flex flex-col">
+          {/* Comments Sidebar - Responsive */}
+          <div className="w-full lg:w-1/3 lg:max-w-md">
+            <div className="lg:sticky lg:top-6">
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 lg:max-h-[calc(100vh-100px)] flex flex-col">
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                     Comments ({comments.length})
@@ -392,7 +430,7 @@ const Watch = () => {
                           value={commentInput}
                           onChange={(e) => setCommentInput(e.target.value)}
                           placeholder="Add a comment..."
-                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-750 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                          className="w-full p-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-750 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           rows="3"
                         />
                       </div>
@@ -404,7 +442,7 @@ const Watch = () => {
                             setEditingCommentId(null);
                             setCommentInput("");
                           }}
-                          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 transition-colors"
+                          className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 transition-colors"
                         >
                           Cancel
                         </button>
@@ -412,7 +450,7 @@ const Watch = () => {
                       <button 
                         onClick={handleCommentSubmit}
                         disabled={!commentInput.trim()}
-                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        className={`px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                           commentInput.trim() 
                             ? 'bg-blue-600 text-white hover:bg-blue-700' 
                             : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'

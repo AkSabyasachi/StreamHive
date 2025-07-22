@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Link } from "react-router-dom";
 import {
   Clock,
   ChevronLeft,
@@ -13,7 +14,11 @@ import {
   Search,
   X,
   ArrowUp,
-  Flame
+  Flame,
+  Play,
+  Eye,
+  ThumbsUp,
+  Trash2
 } from "lucide-react";
 import axios from "../utils/axiosInstance";
 import VideoCard from "../components/common/VideoCard";
@@ -50,83 +55,198 @@ const fadeIn = {
 };
 
 // New component for list view
-const VideoListCard = ({ video, showOwner, showViews, showUploadTime, theme }) => {
-  // Helper functions for formatting
+const VideoListCard = ({ video, theme, onRemove }) => {
   const formatNumber = (num) => {
+    if (!num) return "0";
     if (num >= 1000000) {
-      return (num / 1000000).toFixed(1) + 'M';
+      return (num / 1000000).toFixed(1) + "M";
     } else if (num >= 1000) {
-      return (num / 1000).toFixed(1) + 'K';
-    } else {
-      return num.toString();
+      return (num / 1000).toFixed(1) + "K";
+    }
+    return num.toString();
+  };
+
+  const formatDuration = (duration) => {
+    if (!duration) return "0:00";
+
+    // Handle duration in seconds and limit to 2 decimal places
+    const totalSeconds = parseFloat(duration);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds
+        .toString()
+        .padStart(2, "0")}`;
+    }
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  const getTimeAgo = (date) => {
+    if (!date) return "Just now";
+    try {
+      // We can import and use formatDistanceToNow from date-fns in Home.jsx if needed
+      // But you can just pass formatted string in prop to keep component pure
+      return date;
+    } catch (error) {
+      return "Recently";
     }
   };
 
-  const formatDuration = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
-  };
+  const isNewVideo =
+    video.createdAt &&
+    (Date.now() - new Date(video.createdAt).getTime()) / (1000 * 60 * 60 * 24) <= 7;
 
   return (
-    <div className={`flex gap-4 items-start p-4 rounded-2xl transition-all ${
-      theme === 'dark' 
-        ? 'bg-gray-800/50 hover:bg-gray-700/50' 
-        : 'bg-white hover:bg-gray-50'
-    } border ${
-      theme === 'dark' 
-        ? 'border-gray-700' 
-        : 'border-gray-200'
-    }`}>
-      {/* Thumbnail */}
-      <div className="relative flex-shrink-0">
-        <img 
-          src={video.thumbnail} 
-          alt={video.title} 
-          className="w-40 h-24 rounded-xl object-cover"
-        />
-        <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded">
-          {formatDuration(video.duration)}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.3 }}
+      className={`
+        group relative flex gap-3 sm:gap-4 items-start p-3 sm:p-4 rounded-xl sm:rounded-2xl 
+        transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]
+        ${theme === "dark"
+          ? "bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700/50 hover:border-gray-600/50"
+          : "bg-white hover:bg-gray-50 border border-gray-200/50 hover:border-gray-300/50"
+        }
+        shadow-sm hover:shadow-md backdrop-blur-sm
+      `}
+    >
+      {/* Thumbnail Container */}
+      <Link to={`/watch/${video._id}`} className="relative flex-shrink-0 group/thumb">
+        <div className="w-32 h-20 sm:w-40 sm:h-24 md:w-44 md:h-28 rounded-lg sm:rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-700">
+          <img
+            src={video.thumbnail || "/default-thumbnail.jpg"}
+            alt={video.title}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover/thumb:scale-105"
+            loading="lazy"
+            onError={(e) => {
+              e.target.src = "/default-thumbnail.jpg";
+            }}
+          />
+
+          {/* Play Button Overlay */}
+          <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-all duration-300 flex items-center justify-center">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/90 rounded-full flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transform scale-75 group-hover/thumb:scale-100 transition-all duration-300">
+              <Play className="w-4 h-4 sm:w-5 sm:h-5 text-gray-800 ml-0.5" fill="currentColor" />
+            </div>
+          </div>
+
+          {/* Duration Badge */}
+          <div className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded font-medium">
+            {formatDuration(video.duration)}
+          </div>
+
+          {/* New Badge */}
+          {isNewVideo && (
+            <div className="absolute top-1 left-1 sm:top-2 sm:left-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1 shadow-lg">
+              <Sparkles className="w-2.5 h-2.5" />
+              <span className="hidden sm:inline font-medium">NEW</span>
+            </div>
+          )}
         </div>
-      </div>
+      </Link>
 
       {/* Video Details */}
-      <div className="flex-1 min-w-0">
-        <h3 className={`font-semibold line-clamp-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          {video.title}
-        </h3>
+      <div className="flex-1 min-w-0 space-y-1 sm:space-y-2">
+        {/* Title */}
+        <Link to={`/watch/${video._id}`}>
+          <h3
+            className={`
+            font-semibold text-sm sm:text-base md:text-lg leading-tight
+            line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 
+            transition-colors duration-200 cursor-pointer
+            ${theme === "dark" ? "text-white" : "text-gray-900"}
+          `}
+          >
+            {video.title}
+          </h3>
+        </Link>
 
-        {showOwner && (
-          <div className="flex items-center gap-2 mt-1">
-            <div className="flex-shrink-0">
-              <img 
-                src={video.owner.avatar || "/default-avatar.png"} 
-                alt={video.owner.username} 
-                className="w-6 h-6 rounded-full"
+        {/* Owner Info */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex-shrink-0">
+            <img
+              src={video.owner?.avatar || "/default-avatar.png"}
+              alt={video.owner?.username || "Unknown"}
+              className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rounded-full object-cover border-2 border-blue-500/30"
+              loading="lazy"
+              onError={(e) => {
+                e.target.src = "/default-avatar.png";
+              }}
+            />
+          </div>
+          <span
+            className={`text-xs sm:text-sm md:text-base truncate font-medium ${
+              theme === "dark" ? "text-gray-300" : "text-gray-600"
+            } hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer`}
+          >
+            {video.owner?.username || "Unknown Creator"}
+          </span>
+        </div>
+
+        {/* Stats Row */}
+        <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm flex-wrap">
+          {/* Views */}
+          <div className={`flex items-center gap-1 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+            <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="font-medium">{formatNumber(video.views || 0)}</span>
+            <span className="hidden sm:inline">views</span>
+          </div>
+
+          {/* Upload Time */}
+          <div className={`flex items-center gap-1 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+            <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="font-medium">{getTimeAgo(video.createdAt)}</span>
+          </div>
+
+          {/* Likes */}
+          <div className={`flex items-center gap-1 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+            <ThumbsUp className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="font-medium">{formatNumber(video.likesCount || 0)}</span>
+            <span className="hidden sm:inline">likes</span>
+          </div>
+        </div>
+
+        {/* Watch Progress Bar (if available) */}
+        {video.watchProgress && video.watchProgress > 0 && (
+          <div className="mt-2">
+            <div className={`w-full h-1 rounded-full ${theme === "dark" ? "bg-gray-700" : "bg-gray-200"}`}>
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min(video.watchProgress, 100)}%` }}
               />
             </div>
-            <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-              @{video.owner.username}
-            </p>
+            <span className={`text-xs mt-1 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+              {Math.round(video.watchProgress)}% watched
+            </span>
           </div>
         )}
-
-        <div className="flex items-center gap-3 mt-2 flex-wrap">
-          {showViews && (
-            <span className={`text-xs flex items-center gap-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-              <EyeIcon size={14} />
-              {formatNumber(video.views)} views
-            </span>
-          )}
-          {showUploadTime && (
-            <span className={`text-xs flex items-center gap-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-              <Clock size={14} />
-              {video.uploadedAt}
-            </span>
-          )}
-        </div>
       </div>
-    </div>
+
+      {/* Remove Button */}
+      {onRemove && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            onRemove(video._id);
+          }}
+          className={`
+            opacity-0 group-hover:opacity-100 transition-all duration-200
+            p-2 rounded-full hover:scale-110 active:scale-95
+            ${theme === "dark"
+              ? "hover:bg-red-900/30 text-red-400 hover:text-red-300"
+              : "hover:bg-red-100 text-red-500 hover:text-red-600"
+            }
+          `}
+          title="Remove from history"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      )}
+    </motion.div>
   );
 };
 
